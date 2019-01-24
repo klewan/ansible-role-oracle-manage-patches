@@ -1,0 +1,47 @@
+---
+
+# RAC or non-RAC switch
+oracle_manage_patches_local_config: "{% if oracle_gi_info.rac_nodes|length == 0 %}-local{% else %}{% endif %}"
+
+# a string variable with a list of ORACLE_HOME names separated by a pipe symbol '|'
+oracle_manage_patches_oracle_home_name_patterns_string: "{%- for ohname in oracle_manage_patches_oracle_home_name_patterns|default([],true) -%}{{ ohname }}{%- if not loop.last -%}|{%- endif -%}{% endfor %}"
+
+# a string variable with a list of ORACLE_HOME versions separated by a pipe symbol '|'
+oracle_manage_patches_oracle_home_version_patterns_string: "{%- for ohversion in oracle_manage_patches_oracle_home_version_patterns|default([],true) -%}{{ ohversion }}{%- if not loop.last -%}|{%- endif -%}{% endfor %}"
+
+# Grid Infrastructure info (filtered out by GRID_HOME name and version patterns)
+oracle_manage_patches_oracle_gi_info_selected: {}
+
+# A list describing the databases hosted on the servers (filtered out by ORACLE_HOME name and version patterns)
+oracle_manage_patches_oracle_databases_selected: []
+
+# Dict describing unique ORACLE_HOMEs along with OH version
+oracle_manage_patches_unique_oracle_homes_dict: {}
+
+# A list describing unique ORACLE_HOMEs along with OH version
+oracle_manage_patches_unique_oracle_homes_list: []
+
+# Dict describing registered listeners
+oracle_manage_patches_registered_listeners_dict: {}
+
+# if opatch 'filename' is a full path this variable equals to an empty string
+# otherwise, it equals to 'oracle_manage_patches_stage_dir_opatch' directory
+oracle_manage_patches_opatch_dir_prefix: "{% if oracle_manage_patches_opatch[(_oracle_manage_patches_oh_item.software_version|splitext)[0]].filename | dirname | length == 0 %}{{ oracle_manage_patches_stage_dir_opatch }}/{% else %}{% endif %}"
+
+# if opatch 'filename' is a full path this variable equals to an empty string
+# otherwise, it equals to 'oracle_manage_patches_stage_dir_quarterly_patches' directory
+oracle_manage_patches_quarterly_patches_dir_prefix: "{% if oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name].filename | dirname | length == 0 %}{{ oracle_manage_patches_stage_dir_quarterly_patches }}/{% else %}{% endif %}"
+
+# RAC remote nodes list
+oracle_manage_patches_rac_remote_nodes: "{% if oracle_gi_info is defined %}{{ oracle_gi_info.rac_remote_nodes|default([],true) }}{% else %}[]{% endif %}"
+
+# reference to this oh_item patch from 'oracle_manage_patches_quarterly_patches' variable
+oracle_manage_patches_oh_item_patch: '{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name] }}'
+
+# GI patch reference from 'oracle_manage_patches_quarterly_patches' variable
+oracle_manage_patches_gi_patch: '{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(oracle_gi_info.software_version|splitext)[0]][oracle_manage_patches_patch_name] }}'
+
+# DB patch reference from 'oracle_manage_patches_quarterly_patches' variable
+oracle_manage_patches_db_patch: '{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name] }}'
+
+

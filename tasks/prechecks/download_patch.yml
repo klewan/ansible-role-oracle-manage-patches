@@ -1,0 +1,20 @@
+---
+
+- pause:
+    prompt: "Oracle Support Userid "
+  register: oracle_download_patches_mos_user
+  tags:
+    - oracle_manage_patches_mos_user
+
+- pause:
+    prompt: "Oracle Support Password "
+  register: oracle_download_patches_mos_pass
+  no_log: true
+  tags:
+    - oracle_manage_patches_mos_pass
+
+- import_role:
+    name: oracle-download-patches
+  tags:
+    - oracle_manage_patches_download_patch
+

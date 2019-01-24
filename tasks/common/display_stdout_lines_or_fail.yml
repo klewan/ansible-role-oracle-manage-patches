@@ -1,0 +1,24 @@
+---
+
+- name: display output
+  debug: 
+    var: _oracle_manage_patches_debug.stdout_lines|default([],true)
+  tags:
+    - oracle_manage_patches_display_output
+
+- name: display error
+  debug:
+    var: _oracle_manage_patches_debug.stderr_lines|default([],true)
+  when: _oracle_manage_patches_debug.stderr|default('',true) != '' or _oracle_manage_patches_debug.rc|default(0,true) != 0
+  tags:
+    - oracle_manage_patches_display_output
+
+- name: assert that no errors found
+  assert:
+    that:
+      - "_oracle_manage_patches_debug.stderr|default('',true) == ''"
+      - "_oracle_manage_patches_debug.rc|default(0,true) == 0"
+    fail_msg: "Command failed"
+  tags:
+    - oracle_manage_patches_display_output
+

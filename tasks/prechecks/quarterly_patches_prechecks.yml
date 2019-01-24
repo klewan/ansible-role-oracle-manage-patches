@@ -1,0 +1,27 @@
+---
+
+- name: quarterly patches prechecks | verify patch list (1 - software version)
+  assert:
+    that:
+      - "oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]] is defined"
+    fail_msg: "Variable 'oracle_manage_patches_quarterly_patches' has no attribute [{{oracle_manage_patches_patch_type}}][{{(_oracle_manage_patches_oh_item.software_version|splitext)[0]}}]"
+  tags:
+    - oracle_manage_patches_quarterly_patches_prechecks_variables
+
+- name: quarterly patches prechecks | verify patch list (2 - patch name)
+  assert:
+    that:
+      - "oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name] is defined"
+    fail_msg: "Variable 'oracle_manage_patches_quarterly_patches' has no attribute [{{oracle_manage_patches_patch_type}}][{{(_oracle_manage_patches_oh_item.software_version|splitext)[0]}}][{{oracle_manage_patches_patch_name}}]"
+  tags:
+    - oracle_manage_patches_quarterly_patches_prechecks_variables
+
+- include_tasks: quarterly_patches_prechecks_delegate.yml
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_quarterly_patches_item
+    label: "[Checking patch zip file for host: {{ _oracle_manage_patches_host_quarterly_patches_item }}]"
+  tags:
+    - oracle_manage_patches_include_tasks_quarterly_patches_prechecks_delegate
+

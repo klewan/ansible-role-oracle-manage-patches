@@ -1,0 +1,254 @@
+---
+
+#
+# Input parameters
+#
+
+# Either 'oneoff' or any 'oracle_manage_patches_quarterly_patches' key (i.e. ojvmgicombo/ojvmdbcombo/ru/dbbp/psu)
+oracle_manage_patches_patch_type:
+
+# Patch name (e.g. OCT2018/JUL2018) for quarterly patches
+oracle_manage_patches_patch_name:
+
+# Patch task - either apply or rollback
+oracle_manage_patches_task: apply
+
+#
+# Conditionals and control handling
+#
+
+# (NOT USED anymore, the role is RAC-aware by default) Patch RAC nodes; 'false' enables '-local' switches in opatch/opatchauto/etc. utilities
+#oracle_manage_patches_rac_support: true
+
+# Backup ORACLE_HOME before patch apply
+oracle_manage_patches_backup_oracle_home: false
+
+# Backup ASM metadata before patch apply
+oracle_manage_patches_backup_asm_metadata: false
+
+# Download patches from My Oracle Support
+oracle_manage_patches_download_patch_from_mos: false
+
+# Patch ORACLE_HOMEs/GRID_HOMEs with names matching any string from this list (OR)
+oracle_manage_patches_oracle_home_name_patterns: []
+
+# Example: 
+#oracle_manage_patches_oracle_home_name_patterns:
+#  - '/u01/app/oracle/product/11.2.0/dbhome_1'
+#  - '/u01/app/oracle/product/12.1.0/dbhome_2'
+#  - '/u01/app/12.1.0/grid'
+
+# Patch ORACLE_HOMEs/GRID_HOMEs with version matching any string from this list (OR)
+oracle_manage_patches_oracle_home_version_patterns: []
+
+# Example:
+#oracle_manage_patches_oracle_home_version_patterns:
+#  - 11.2.0.4.0
+#  - 12.1.0.2.0
+
+# Display 'opatch lsinventory' output
+oracle_manage_patches_display_opatch_lsinventory_output: true
+
+# Display 'opatchauto -analyze' output
+oracle_manage_patches_display_opatchauto_analyze_output: true
+
+# Display 'ojvm conflict detection' output
+oracle_manage_patches_display_ojvm_conflict_detection_output: true
+
+# Display 'db conflict detection' output
+oracle_manage_patches_display_db_conflict_detection_output: true
+
+# Display 'opatchauto' output
+oracle_manage_patches_display_opatchauto_apply_output: true
+oracle_manage_patches_display_opatchauto_output: true
+
+# Display 'opatch' output
+oracle_manage_patches_display_opatch_output: true
+
+# Display 'datapatch' output
+oracle_manage_patches_display_datapatch_output: true
+
+# Display 'postinstall.sql' output
+oracle_manage_patches_display_postinstall_output: false
+
+# whether or not run pre scripts (opatch lsinventory/db_psu_apply_checks.sql/etc)
+oracle_manage_patches_run_pre_scripts: true
+
+# whether or not run post scripts (opatch lsinventory/db_psu_apply_checks.sql/etc)
+oracle_manage_patches_run_post_scripts: true
+
+# execute patch conflict detection
+oracle_manage_patches_conflict_detection: true
+
+# execute patch installation (set 'false' only for debugging)
+oracle_manage_patches_patch_installation: true
+
+#
+# Stage location, installation files
+#
+
+# Set to 'true' to indicate that the stage directory with patch zip files is accessible on the remote system
+#   and not local to the Ansible controller
+# Set to 'false' to copy patch files from the Ansible controller to the remote system
+oracle_manage_patches_remote_stage: true
+
+# Stage directory for OPatch utility
+oracle_manage_patches_stage_dir_opatch: /software/rdbms/opatch
+
+# whether or not update (extract) OPatch utility
+oracle_manage_patches_update_opatch: true
+
+# whether or not extract patch zip file
+oracle_manage_patches_extract_patch_file: true
+
+# Stage directory for Oracle quarterly patches archives (PSU/RU/etc.)
+oracle_manage_patches_stage_dir_quarterly_patches: /software/rdbms/quarterly_patches
+
+# A list of opatch files
+#   'filename' should either be a full path or it will be searched in 'oracle_manage_patches_stage_dir_opatch' directory
+
+oracle_manage_patches_opatch:
+  11.2.0.1:
+    filename: p6880880_112000_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+  11.2.0.2:
+    filename: p6880880_112000_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+  11.2.0.3:
+    filename: p6880880_112000_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+  11.2.0.4:
+    filename: p6880880_112000_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+  12.1.0.1:
+    filename: p6880880_121010_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+  12.1.0.2:
+    filename: p6880880_122010_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+  12.2.0.1:
+    filename: p6880880_122010_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+  18.0.0.0:
+    filename: p6880880_180000_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+
+
+# A list of quarterly patches
+#   'filename' should either be a full path or it will be searched in 'oracle_manage_patches_stage_dir_quarterly_patches' directory
+
+oracle_manage_patches_quarterly_patches:
+
+  ojvmgicombo:
+    description: 'Combo of OJVM component DB PSU + GI PSU'
+    12.1.0.2:
+      JAN2019:
+        patchversion: 12.1.0.2.190115
+        filename: p28980120_121020_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+        patchid: 28980120
+        gi_patchid: 28813884
+        ojvm_patchid: 28790654
+      OCT2018:
+        patchversion: 12.1.0.2.181016
+        filename: p28689148_121020_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+        patchid: 28689148
+        gi_patchid: 28349311
+        ojvm_patchid: 28440711
+      JUL2018:
+        patchversion: 12.1.0.2.180717
+        filename: p28317214_121020_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+        patchid: 28317214
+        gi_patchid: 27967747
+        ojvm_patchid: 27923320
+    12.2.0.1:
+      JAN2018:
+        patchversion: 12.2.0.1.180116
+        filename: p27010711_122010_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+        patchid: 27010711
+        gi_patchid: 27100009
+        ojvm_patchid: 27001739
+
+  ojvmdbcombo:
+    description: 'Combo of OJVM component DB PSU + DB PSU'
+    11.2.0.4:
+      OCT2018:
+        patchversion: 11.2.0.4.181016
+        filename: p28689165_112040_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+        patchid: 28689165
+        db_patchid: 28204707
+        ojvm_patchid: 28440700
+      JUL2018:
+        patchversion: 11.2.0.4.180717
+        filename: p28317183_112040_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+        patchid: 28317183
+        db_patchid: 27734982
+        ojvm_patchid: 27923163
+
+  ru:
+    description: 'Release Update Patch (RU)'
+    12.2.0.1:
+      JUL2018:
+        patchversion: 12.2.0.1.180717
+        filename: p28183653_122010_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+        patchid: 28183653
+        si_patchid: 28163133
+
+  dbbp:
+    description: 'Database Proactive Bundle Patch (BP)'
+    12.1.0.2:
+      JUL2017:
+        patchversion: 12.1.0.2.170718
+        filename: p26022196_121020_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+        patchid: 26022196
+        si_patchid: 25869760
+
+  psu:
+    description: 'Patch Set Update (PSU)'
+    11.2.0.4:
+      JUL2017:
+        patchversion: 11.2.0.4.170718
+        filename: p26030799_112040_{{ ansible_system }}-{{ ansible_architecture | replace('_', '-') }}.zip
+        patchid: 26030799
+        si_patchid: 25869727
+
+
+oracle_manage_patches_oneoff_patches:
+  # 12.1.0.2:
+    # - patchid: 21091518   # Avoid Poor Performance or Wrong Results on 12.1.0.2 (Doc ID 2034610.1)
+    #   filename: p21091518_121020_Linux-x86-64.zip
+    # - patchid: 20879889   # Avoid Poor Performance or Wrong Results on 12.1.0.2 (Doc ID 2034610.1)
+    #   filename: p20879889_121020_Linux-x86-64.zip
+#PSU version specific patches
+  12.1.0.2.160119:
+    - patchid: 21091518   # Avoid Poor Performance or Wrong Results on 12.1.0.2 (Doc ID 2034610.1)
+      filename: p21091518_121020_Linux-x86-64.zip
+    - patchid: 20879889   # Avoid Poor Performance or Wrong Results on 12.1.0.2 (Doc ID 2034610.1)
+      filename: p20879889_121020_Linux-x86-64.zip
+    - patchid: 13542050   # Avoid Poor Performance or Wrong Results on 12.1.0.2 (Doc ID 2034610.1)
+      filename: p13542050_121024_Linux-x86-64.zip
+    - patchid: 21869620   # Merge request for bugs 19509982 20807398
+      filename: p21869620_121025_Linux-x86-64.zip
+    - patchid: 22965605   # MERGE REQUEST ON TOP OF DATABASE PSU 12.1.0.2.5 FOR BUGS 21869620 18302923
+      filename: p22965605_121025_Linux-x86-64.zip
+  11.2.0.4.8:
+    - patchid: 17890099 # ORA-2072 AND ORA-2063 ON QUERY VIA DBLINK
+      filename: p17890099_112048_Linux-x86-64.zip
+  11.2.0.4.7:
+    - patchid: 17890099 # ORA-2072 AND ORA-2063 ON QUERY VIA DBLINK
+      filename: p17890099_112047_Linux-x86-64.zip
+
+#
+# Log/backup/install directories
+#
+
+# Backup directory used for different non-database backups, such as ASM metadata, OCR registry backup, etc
+oracle_manage_patches_backup_dir: '{{ oracle_default_backup_dir|default( "/u01/app/psu/backup", true ) }}'
+
+# Log directory
+oracle_manage_patches_log_dir: '{{ oracle_default_log_dir|default( "/u01/app/psu/log", true ) }}'
+
+# Stage install directory
+oracle_manage_patches_stage_install_dir: '{{ oracle_default_stage_install_dir|default( "/u01/app/oracle/install", true ) }}' 
+
+#
+# Debug info
+#
+
+# (debug) display patches information
+oracle_manage_patches_debug_display_patches_info: true
+
+# (debug) display ORACLE_HOMEs selected for patching
+oracle_manage_patches_debug_display_homes_selected_for_patching: true
+

@@ -1,0 +1,12 @@
+---
+
+- include_tasks: common/run_post_scripts_gi.yml
+  when: oracle_manage_patches_run_post_scripts and _oracle_manage_patches_oh_item.oracle_home == oracle_gi_info.oracle_home
+  tags:
+    - oracle_manage_patches_include_tasks_run_post_scripts_gi
+
+- include_tasks: common/run_post_scripts.yml
+  when: oracle_manage_patches_run_post_scripts and _oracle_manage_patches_oh_item.oracle_home != oracle_gi_info.oracle_home
+  tags:
+    - oracle_manage_patches_include_tasks_run_post_scripts
+

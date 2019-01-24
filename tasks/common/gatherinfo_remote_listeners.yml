@@ -1,0 +1,8 @@
+---
+
+- import_role:
+    name: oracle-gatherinfo-listener
+  delegate_to: '{{ _oracle_manage_patches_host_outer_item }}'
+  tags:
+    - oracle_manage_patches_gatherinfo_remote_listeners
+

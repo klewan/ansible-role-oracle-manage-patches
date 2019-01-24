@@ -1,0 +1,8 @@
+---
+
+- import_role:
+    name: oracle-asm-metadata
+  delegate_to: '{{ _oracle_manage_patches_host_outer_item }}'
+  tags:
+    - oracle-asm-metadata
+

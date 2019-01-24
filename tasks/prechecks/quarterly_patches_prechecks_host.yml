@@ -1,0 +1,34 @@
+---
+
+- name: quarterly patches prechecks | check if patch zip file exists
+  stat:
+    path: "{{ oracle_manage_patches_quarterly_patches_dir_prefix }}{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name].filename }}"
+    get_checksum: false
+    get_md5: false
+    get_mime: false
+    get_attributes: false
+    follow: yes
+  register: _oracle_manage_patches_quarterly_patches_stat
+  check_mode: no
+  tags:
+    - oracle_manage_patches_quarterly_patches_prechecks_quarterly_patches_stat
+
+- name: quarterly patches prechecks | assert that patch zip file exists
+  assert:
+    that:
+      - "_oracle_manage_patches_quarterly_patches_stat.stat.exists"
+    fail_msg: "Patch zip file ({{ oracle_manage_patches_quarterly_patches_dir_prefix }}{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name].filename }}) is not accessible on {{ ansible_host }}"
+  when: not oracle_manage_patches_download_patch_from_mos
+  tags:
+    - oracle_manage_patches_quarterly_patches_prechecks_variables
+
+- include_tasks: download_patch.yml
+  vars:
+    oracle_download_patches_stage_directory: '{{ oracle_manage_patches_stage_dir_quarterly_patches }}'
+    oracle_download_patches_list:
+      - '{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name].patchid }}'
+    oracle_download_patches_regexp: '{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name].filename | basename }}'
+    oracle_download_patches_platforms:
+      - "{{ ansible_system }} {{ ansible_architecture | replace('_', '-') }}"
+  when: oracle_manage_patches_download_patch_from_mos and not _oracle_manage_patches_quarterly_patches_stat.stat.exists
+

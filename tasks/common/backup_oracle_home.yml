@@ -1,0 +1,10 @@
+---
+
+- import_role:
+    name: oracle-homes-backup
+  vars:
+    oracle_homes_backup_ora_home: '{{ _oracle_manage_patches_oh_item.oracle_home }}'
+  delegate_to: '{{ _oracle_manage_patches_host_item }}'
+  tags:
+    - oracle-homes-backup
+

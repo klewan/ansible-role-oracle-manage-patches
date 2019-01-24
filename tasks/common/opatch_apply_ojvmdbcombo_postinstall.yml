@@ -1,0 +1,155 @@
+---
+
+- name: apply postinstall | change cluster_database=false for RAC primary databases
+  shell: |
+    printf 'startup nomount\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    printf 'alter system set cluster_database=false scope=spfile;\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    printf 'shutdown immediate\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  when:
+    - oracle_manage_patches_rac_remote_nodes|length > 0
+  tags:
+    - oracle_manage_patches_postinstall_set_cluster_database_false
+
+- name: apply postinstall | startup database in UPGRADE mode
+  shell: |
+    printf 'startup upgrade\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    #echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  register: _oracle_manage_patches_db_startup_upgrade
+  ignore_errors: yes
+  tags:
+    - oracle_manage_patches_postinstall_startup_upgrade
+
+- include_tasks: display_stdout_lines_or_fail.yml
+  vars:
+    _oracle_manage_patches_debug: '{{ _oracle_manage_patches_db_startup_upgrade }}'
+  when: not ansible_check_mode
+
+- name: apply postinstall | OJVM | display OJVM postinstall.sql starting message
+  debug:
+    msg: [ "Running OJVM postinstall.sql for ORACLE_SID={{ _oracle_manage_patches_db_item.instance_name }}; ORACLE_HOME={{ _oracle_manage_patches_db_item.oracle_home }}", "Logfile: {{ oracle_manage_patches_log_dir }}/db.{{ _oracle_manage_patches_db_item.instance_name }}.p{{ oracle_manage_patches_oh_item_patch.patchid }}-{{ oracle_manage_patches_oh_item_patch.ojvm_patchid }}-OJVM.postinstall-sql.TIMESTAMP.log", "Please wait .." ]
+  when: not ansible_check_mode
+  tags:
+    - oracle_manage_patches_postinstall_apply_ojvm_on_database_message
+    - oracle_manage_patches_postinstall_apply_ojvm_on_database
+
+- name: apply postinstall | OJVM | run OJVM postinstall.sql script
+  shell: |
+    cd $ORACLE_HOME/sqlpatch/{{ oracle_manage_patches_oh_item_patch.ojvm_patchid }}
+    echo exit | $ORACLE_HOME/bin/sqlplus -S / as sysdba @postinstall.sql | tee {{ oracle_manage_patches_log_dir }}/db.{{ _oracle_manage_patches_db_item.instance_name }}.p{{ oracle_manage_patches_oh_item_patch.patchid }}-{{ oracle_manage_patches_oh_item_patch.ojvm_patchid }}-OJVM.postinstall-sql.$(date +%Y-%m-%d_%H%M%S).log
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  ignore_errors: yes
+  register: _oracle_manage_patches_postinstall_apply_ojvm_on_database
+  tags:
+    - oracle_manage_patches_postinstall_apply_ojvm_on_database
+
+- include_tasks: display_stdout_lines_or_fail.yml
+  vars:
+    _oracle_manage_patches_debug: '{{ _oracle_manage_patches_postinstall_apply_ojvm_on_database }}'
+  when:
+    - not ansible_check_mode
+    - (oracle_manage_patches_display_postinstall_output or _oracle_manage_patches_postinstall_apply_ojvm_on_database.rc|default(0,true) != 0 or _oracle_manage_patches_postinstall_apply_ojvm_on_database.stderr|default('',true) != '')
+  tags:
+    - oracle_manage_patches_postinstall_apply_ojvm_on_database
+
+- name: apply postinstall | change cluster_database=true for RAC primary databases
+  shell: |
+    printf 'alter system set cluster_database=true scope=spfile;\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  when:
+    - oracle_manage_patches_rac_remote_nodes|length > 0
+  tags:
+    - oracle_manage_patches_postinstall_set_cluster_database_true
+
+- name: apply postinstall | OJVM | run utlrp.sql script to recompile INVALID objects
+  shell: |
+    cd $ORACLE_HOME/rdbms/admin
+    echo exit | $ORACLE_HOME/bin/sqlplus -S / as sysdba @utlrp.sql | tee {{ oracle_manage_patches_log_dir }}/db.${ORACLE_SID}.p{{ oracle_manage_patches_oh_item_patch.patchid }}-{{ oracle_manage_patches_oh_item_patch.ojvm_patchid }}-OJVM..utlrp-sql.$(date +%Y-%m-%d_%H%M%S).log
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  tags:
+    - oracle_manage_patches_postinstall_ojvm_utlrp
+
+- name: apply postinstall | OJVM | shutdown database
+  shell: |
+    printf 'shutdown immediate\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  tags:
+    - oracle_manage_patches_postinstall_shutdown_database_ojvm
+
+- name: apply postinstall | startup database
+  shell: |
+    printf 'startup\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  tags:
+    - oracle_manage_patches_postinstall_startup_database
+
+- name: apply postinstall | DB | display catbundle.sql starting message
+  debug:
+    msg: [ "Running catbundle.sql for ORACLE_SID={{ _oracle_manage_patches_db_item.instance_name }}; ORACLE_HOME={{ _oracle_manage_patches_db_item.oracle_home }}", "Logfile: {{ oracle_manage_patches_log_dir }}/db.{{ _oracle_manage_patches_db_item.instance_name }}.p{{ oracle_manage_patches_oh_item_patch.patchid }}-{{ oracle_manage_patches_oh_item_patch.db_patchid }}-DB.catbundle-sql.TIMESTAMP.log", "Please wait .." ]
+  when: not ansible_check_mode
+  tags:
+    - oracle_manage_patches_postinstall_apply_catbundle_on_database_message
+    - oracle_manage_patches_postinstall_apply_catbundle_on_database
+
+- name: apply postinstall | DB | run catbundle.sql script
+  shell: |
+    cd $ORACLE_HOME/rdbms/admin
+    echo exit | $ORACLE_HOME/bin/sqlplus -S / as sysdba @catbundle.sql psu apply | tee {{ oracle_manage_patches_log_dir }}/db.{{ _oracle_manage_patches_db_item.instance_name }}.p{{ oracle_manage_patches_oh_item_patch.patchid }}-{{ oracle_manage_patches_oh_item_patch.db_patchid }}-DB.catbundle-sql.$(date +%Y-%m-%d_%H%M%S).log
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  ignore_errors: yes
+  register: _oracle_manage_patches_postinstall_apply_catbundle_on_database
+  tags:
+    - oracle_manage_patches_postinstall_apply_catbundle_on_database
+
+- include_tasks: display_stdout_lines_or_fail.yml
+  vars:
+    _oracle_manage_patches_debug: '{{ _oracle_manage_patches_postinstall_apply_catbundle_on_database }}'
+  when:
+    - not ansible_check_mode
+    - (oracle_manage_patches_display_postinstall_output or _oracle_manage_patches_postinstall_apply_catbundle_on_database.rc|default(0,true) != 0 or _oracle_manage_patches_postinstall_apply_catbundle_on_database.stderr|default('',true) != '')
+  tags:
+    - oracle_manage_patches_postinstall_apply_catbundle_on_database
+
+- name: apply postinstall | DB | run utlrp.sql script to recompile INVALID objects
+  shell: |
+    cd $ORACLE_HOME/rdbms/admin
+    echo exit | $ORACLE_HOME/bin/sqlplus -S / as sysdba @utlrp.sql | tee {{ oracle_manage_patches_log_dir }}/db.${ORACLE_SID}.p{{ oracle_manage_patches_oh_item_patch.patchid }}-{{ oracle_manage_patches_oh_item_patch.db_patchid }}-DB..utlrp-sql.$(date +%Y-%m-%d_%H%M%S).log
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  tags:
+    - oracle_manage_patches_postinstall_db_utlrp
+
+- name: apply postinstall | DB | shutdown database
+  shell: |
+    printf 'shutdown immediate\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  tags:
+    - oracle_manage_patches_postinstall_shutdown_database_db
+

@@ -1,0 +1,40 @@
+---
+
+- name: stop DB console services registered in GI OHAS
+  shell: |
+    {{ oracle_gi_info.oracle_home }}/bin/crsctl stop resource {{ _oracle_manage_patches_dbconsole_item.dbconsole_resource_name }}
+    echo 0
+  with_items:
+    - '{{ oracle_gatherinfo_dbconsole_registered_services }}'
+  loop_control:
+    label: "[DB console service: {{ _oracle_manage_patches_dbconsole_item.dbconsole_resource_name }}; ORACLE_HOME: {{ _oracle_manage_patches_dbconsole_item.oracle_home }}]"
+    loop_var: _oracle_manage_patches_dbconsole_item
+  when: 
+    - not ansible_check_mode
+    - _oracle_manage_patches_dbconsole_item.oracle_home == _oracle_manage_patches_oh_item.oracle_home
+    - _oracle_manage_patches_dbconsole_item.state == "ONLINE"
+  tags:
+    - oracle_manage_patches_stop_db_console_services
+    - oracle_manage_patches_stop_db_console_services_registered
+
+- name: stop DB console services not registered in GI OHAS
+  shell: |
+    $ORACLE_HOME/bin/emctl stop dbconsole
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_dbconsole_item[1].oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_dbconsole_item[1].instance_name }}'
+  delegate_to: '{{ _oracle_manage_patches_dbconsole_item[0] }}'
+  with_nested:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+    - '{{ oracle_gatherinfo_dbconsole_running_services }}'
+  loop_control:
+    label: "[ORACLE_SID: {{ _oracle_manage_patches_dbconsole_item[1].instance_name }}; ORACLE_HOME: {{ _oracle_manage_patches_dbconsole_item[1].oracle_home }}]"
+    loop_var: _oracle_manage_patches_dbconsole_item
+  when:
+    - not ansible_check_mode
+    - _oracle_manage_patches_dbconsole_item[1].oracle_home == _oracle_manage_patches_oh_item.oracle_home
+  tags:
+    - oracle_manage_patches_stop_db_console_services
+    - oracle_manage_patches_stop_db_console_services_running
+

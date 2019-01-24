@@ -1,0 +1,55 @@
+---
+
+- name: extract patch | create patch stage directory
+  file:
+    path: "{{ oracle_manage_patches_stage_install_dir }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+#    group: "{{ oracle_oinstall_group }}"
+  delegate_to: '{{ _oracle_manage_patches_host_patch_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_patch_item
+    label: "[directory: {{ oracle_manage_patches_stage_install_dir }}]"
+  check_mode: no
+  when: oracle_manage_patches_extract_patch_file
+  tags:
+    - oracle_manage_patches_extract_patch
+    - oracle_manage_patches_patch_directory
+
+- name: extract patch | unzip patch file
+  unarchive:
+    src: "{{ oracle_manage_patches_quarterly_patches_dir_prefix }}{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name].filename }}"
+    dest: "{{ oracle_manage_patches_stage_install_dir }}/"
+    creates: "{{ oracle_manage_patches_stage_install_dir }}/{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name].patchid }}/"
+    remote_src: '{{ oracle_manage_patches_remote_stage }}'
+    owner: "{{ oracle_user }}"
+#    group: "{{ oracle_oinstall_group }}"
+  delegate_to: '{{ _oracle_manage_patches_host_patch_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  check_mode: no
+  loop_control:
+    loop_var: _oracle_manage_patches_host_patch_item
+    label: "[Extracting patch zip file ({{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type][(_oracle_manage_patches_oh_item.software_version|splitext)[0]][oracle_manage_patches_patch_name].filename | basename }}) to {{ oracle_manage_patches_stage_install_dir }}]"
+  when: oracle_manage_patches_extract_patch_file
+  tags:
+    - oracle_manage_patches_extract_patch
+
+- name: extract patch | copy Oracle Configuration Manager (OCM) response file
+  copy:
+    src: ocm.rsp
+    dest: "{{ oracle_manage_patches_stage_install_dir }}/ocm.rsp"
+    owner: "{{ oracle_user }}"
+    mode: 0775
+  delegate_to: '{{ _oracle_manage_patches_host_ocm_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_ocm_item
+    label: "[OCM response file: {{ oracle_manage_patches_stage_install_dir }}/ocm.rsp]"
+  check_mode: no
+  tags:
+    - oracle_manage_patches_copy_ocm_response_file
+

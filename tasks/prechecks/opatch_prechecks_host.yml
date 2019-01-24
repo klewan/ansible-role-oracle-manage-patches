@@ -1,0 +1,34 @@
+---
+
+- name: opatch prechecks | check if OPatch zip file exists
+  stat:
+    path: "{{ oracle_manage_patches_opatch_dir_prefix }}{{ oracle_manage_patches_opatch[(_oracle_manage_patches_oh_item.software_version|splitext)[0]].filename }}"
+    get_checksum: false
+    get_md5: false
+    get_mime: false
+    get_attributes: false
+    follow: yes
+  register: _oracle_manage_patches_opatch_stat
+  check_mode: no
+  tags:
+    - oracle_manage_patches_opatch_prechecks_opatch_stat
+
+- name: opatch prechecks | assert that OPatch zip file exists
+  assert:
+    that:
+      - "_oracle_manage_patches_opatch_stat.stat.exists"
+    fail_msg: "OPatch zip file ({{ oracle_manage_patches_opatch_dir_prefix }}{{ oracle_manage_patches_opatch[(_oracle_manage_patches_oh_item.software_version|splitext)[0]].filename }}) is not accessible on {{ ansible_host }}"
+  when: not oracle_manage_patches_download_patch_from_mos
+  tags:
+    - oracle_manage_patches_opatch_prechecks_variables
+
+- include_tasks: download_patch.yml
+  vars:
+    oracle_download_patches_stage_directory: '{{ oracle_manage_patches_stage_dir_opatch }}'
+    oracle_download_patches_list:
+      - 6880880
+    oracle_download_patches_regexp: '{{ oracle_manage_patches_opatch[(_oracle_manage_patches_oh_item.software_version|splitext)[0]].filename | basename }}'
+    oracle_download_patches_platforms:
+      - "{{ ansible_system }} {{ ansible_architecture | replace('_', '-') }}"
+  when: oracle_manage_patches_download_patch_from_mos and not _oracle_manage_patches_opatch_stat.stat.exists
+

@@ -1,0 +1,32 @@
+---
+
+- name: startup databases | startup databases
+  shell: |
+    {% if _oracle_manage_patches_db_item.database_type == 'SINGLE' %}
+    {%   if _oracle_manage_patches_db_item.database_role == 'PRIMARY' %}
+    {%     if _oracle_manage_patches_db_item.is_registered_in_gi|default(false,true)|bool %}
+    $ORACLE_HOME/bin/srvctl start database -d $DB_UNIQUE_NAME
+    {%     else %}
+    printf 'startup\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    {%     endif %}
+    {%   else %}
+    printf 'startup mount\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    {%   endif %}
+    {% else %}
+    $ORACLE_HOME/bin/srvctl start database -d $DB_UNIQUE_NAME
+    {% endif %}
+    echo
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+    DB_UNIQUE_NAME: '{{ _oracle_manage_patches_db_item.db_unique_name }}'
+  with_items:
+    - '{{ oracle_databases }}'
+  loop_control:
+    label: "[Starting up DB_UNIQUE_NAME: {{ _oracle_manage_patches_db_item.db_unique_name }}; ORACLE_HOME: {{ _oracle_manage_patches_db_item.oracle_home }}]"
+    loop_var: _oracle_manage_patches_db_item
+  when:
+    - _oracle_manage_patches_db_item.oracle_home == _oracle_manage_patches_oh_item.oracle_home
+  tags:
+    - oracle_manage_patches_startup_databases
+

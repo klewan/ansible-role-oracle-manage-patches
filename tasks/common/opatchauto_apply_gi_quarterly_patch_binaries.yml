@@ -1,0 +1,87 @@
+---
+
+- name: display GI patch conflict detection message
+  debug:
+    msg: [ "Running GI patch conflict detection for {{ oracle_manage_patches_gi_patch.patchid }}/{{ oracle_manage_patches_gi_patch.gi_patchid }} patchid.", "Logfile: {{ oracle_manage_patches_log_dir }}/grid_home_oracle_homes.p{{ oracle_manage_patches_gi_patch.gi_patchid }}.opatchauto-apply-analyze.TIMESTAMP.log.", "Please wait .." ]
+  when: oracle_manage_patches_conflict_detection
+  tags:
+    - oracle_manage_patches_gi_conflict_detection_message
+    - oracle_manage_patches_gi_conflict_detection
+
+- name: GI patch conflict detection
+  shell: |
+    sudo $ORACLE_HOME/OPatch/opatchauto apply {{ oracle_manage_patches_stage_install_dir }}/{{ oracle_manage_patches_gi_patch.patchid }}/{{ oracle_manage_patches_gi_patch.gi_patchid }} -analyze -log {{ oracle_manage_patches_log_dir }}/grid_home_oracle_homes.p{{ oracle_manage_patches_gi_patch.gi_patchid }}.opatchauto-apply-analyze.$(date +%Y-%m-%d_%H%M%S).log
+  args:
+    warn: false
+  become: false
+  environment:
+    ORACLE_HOME: '{{ oracle_gi_info.oracle_home }}'
+  check_mode: no
+  ignore_errors: yes
+  register: _oracle_manage_patches_conflict_detection_output
+  delegate_to: '{{ _oracle_manage_patches_host_patch_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_patch_item
+    label: "[conflict detection for {{ oracle_manage_patches_gi_patch.patchid }}/{{ oracle_manage_patches_gi_patch.gi_patchid }} patchid; logfile: {{ oracle_manage_patches_log_dir }}/grid_home_oracle_homes.p{{ oracle_manage_patches_gi_patch.gi_patchid }}.opatchauto-apply-analyze.TIMESTAMP.log]"
+  when: oracle_manage_patches_conflict_detection
+  tags:
+    - oracle_manage_patches_gi_conflict_detection
+
+- include_tasks: display_stdout_lines_or_fail.yml
+  vars:
+    _oracle_manage_patches_debug: '{{ _oracle_manage_patches_output_item }}'
+  with_items:
+    - "{{ _oracle_manage_patches_conflict_detection_output.results|default([],true) }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_output_item
+    label: "[host: {{ _oracle_manage_patches_output_item._oracle_manage_patches_host_patch_item }}]"
+  when: oracle_manage_patches_display_opatchauto_analyze_output or _oracle_manage_patches_output_item.rc|default(0,true) != 0 or _oracle_manage_patches_output_item.stderr|default('',true) != ''
+  tags:
+    - oracle_manage_patches_display_opatchauto_analyze
+    - oracle_manage_patches_gi_conflict_detection
+
+# or 'Analysis for applying patches has completed successfully' not in_oracle_manage_patches_output_item.stdout
+
+- name: display GI patch installation message
+  debug:
+    msg: [ "Patching GI and Oracle Database Homes together: {{ oracle_manage_patches_gi_patch.patchid }}/{{ oracle_manage_patches_gi_patch.gi_patchid }} patchid.", "Logfile: {{ oracle_manage_patches_log_dir }}/grid_home_oracle_homes.p{{ oracle_manage_patches_gi_patch.gi_patchid }}.opatchauto-apply.TIMESTAMP.log.", "Please wait .." ]
+  when: not ansible_check_mode and oracle_manage_patches_patch_installation
+  tags:
+    - oracle_manage_patches_gi_patch_installation_message
+    - oracle_manage_patches_gi_patch_installation
+
+- name: GI patch installation
+  shell: |
+    sudo $ORACLE_HOME/OPatch/opatchauto apply {{ oracle_manage_patches_stage_install_dir }}/{{ oracle_manage_patches_gi_patch.patchid }}/{{ oracle_manage_patches_gi_patch.gi_patchid }} -log {{ oracle_manage_patches_log_dir }}/grid_home_oracle_homes.p{{ oracle_manage_patches_gi_patch.gi_patchid }}.opatchauto-apply.$(date +%Y-%m-%d_%H%M%S).log
+  args:
+    warn: false
+  become: false
+  environment:
+    ORACLE_HOME: '{{ oracle_gi_info.oracle_home }}'
+  ignore_errors: yes
+  register: _oracle_manage_patches_patch_installation_output
+  delegate_to: '{{ _oracle_manage_patches_host_patch_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_patch_item
+    label: "[patch installation for {{ oracle_manage_patches_gi_patch.patchid }}/{{ oracle_manage_patches_gi_patch.gi_patchid }} patchid; logfile: {{ oracle_manage_patches_log_dir }}/grid_home_oracle_homes.p{{ oracle_manage_patches_gi_patch.gi_patchid }}.opatchauto-apply.TIMESTAMP.log]"
+  when: not ansible_check_mode and oracle_manage_patches_patch_installation
+  tags:
+    - oracle_manage_patches_gi_patch_installation
+
+- include_tasks: display_stdout_lines_or_fail.yml
+  vars:
+    _oracle_manage_patches_debug: '{{ _oracle_manage_patches_output_item }}'
+  with_items:
+    - "{{ _oracle_manage_patches_patch_installation_output.results|default([],true) }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_output_item
+    label: "[host: {{ _oracle_manage_patches_output_item._oracle_manage_patches_host_patch_item }}]"
+  when: not ansible_check_mode and oracle_manage_patches_patch_installation and (oracle_manage_patches_display_opatchauto_apply_output or _oracle_manage_patches_output_item.rc|default(0,true) != 0 or _oracle_manage_patches_output_item.stderr|default('',true) != '')
+  tags:
+    - oracle_manage_patches_display_opatchauto_apply
+    - oracle_manage_patches_gi_patch_installation
+

@@ -1,0 +1,29 @@
+galaxy_info:
+  author: Krzysztof Lewandowski
+  description: Manage Oracle patches
+
+  license: GPLv3
+
+  min_ansible_version: 2.7
+
+  platforms:
+  - name: EL
+    versions:
+    - 6
+    - 7
+
+  galaxy_tags:
+  - oracle
+  - database
+  - grid
+  - opatch
+  - opatchauto
+  - oneoff
+  - psu
+  - ru
+  - bundle patch
+  - patching
+
+dependencies:
+  - { role: klewan.oracle }
+

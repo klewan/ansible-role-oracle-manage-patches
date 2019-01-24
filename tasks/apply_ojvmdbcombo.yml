@@ -1,0 +1,22 @@
+---
+
+- include_tasks: common/backup_asm_metadata.yml
+  with_items:
+    - '{{ inventory_hostname }}'
+    - '{{ oracle_manage_patches_rac_remote_nodes }}'
+  loop_control:
+    label: "[host: {{ _oracle_manage_patches_host_outer_item }}]"
+    loop_var: _oracle_manage_patches_host_outer_item
+  when: oracle_manage_patches_backup_asm_metadata and oracle_gi_info|default({},true) != {}
+  tags:
+    - oracle-asm-metadata
+
+- include_tasks: apply_ojvmdbcombo_oh.yml
+  with_items:
+    - '{{ oracle_manage_patches_unique_oracle_homes_list }}'
+  loop_control:
+    label: "[Processsing ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}; version: {{ _oracle_manage_patches_oh_item.software_version }}"
+    loop_var: _oracle_manage_patches_oh_item
+  tags:
+    - oracle_manage_patches_include_tasks_oh
+

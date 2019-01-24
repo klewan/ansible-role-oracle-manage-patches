@@ -1,0 +1,171 @@
+---
+
+- name: assert that GRID_HOME is not empty
+  assert:
+    that:
+      - "oracle_gi_info.oracle_home|default('', true)|length > 0"
+    fail_msg: "'oracle_gi_info.oracle_home' must not be empty"
+  tags:
+    - oracle_manage_patches_gi_precheck
+
+- include_tasks: common/backup_asm_metadata.yml
+  with_items:
+    - '{{ inventory_hostname }}'
+    - '{{ oracle_manage_patches_rac_remote_nodes }}'
+  loop_control:
+    label: "[host: {{ _oracle_manage_patches_host_outer_item }}]"
+    loop_var: _oracle_manage_patches_host_outer_item
+  when: oracle_manage_patches_backup_asm_metadata
+  tags:
+    - oracle-asm-metadata
+
+- include_tasks: apply_ojvmgicombo_oh_pre.yml
+  with_items:
+    - '{{ oracle_manage_patches_unique_oracle_homes_list }}'
+    - '{{ oracle_gi_info }}'
+  loop_control:
+    label: "[Processsing ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}; version: {{ _oracle_manage_patches_oh_item.software_version }}"
+    loop_var: _oracle_manage_patches_oh_item
+  when: _oracle_manage_patches_oh_item.software_version == oracle_gi_info.software_version
+  tags:
+    - oracle_manage_patches_include_tasks_oh_pre
+
+- include_tasks: common/stop_dbconsole.yml
+  with_items:
+    - '{{ oracle_manage_patches_unique_oracle_homes_list }}'
+  loop_control:
+    label: "[Processsing ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}; version: {{ _oracle_manage_patches_oh_item.software_version }}"
+    loop_var: _oracle_manage_patches_oh_item
+  when: _oracle_manage_patches_oh_item.software_version == oracle_gi_info.software_version
+  tags:
+    - oracle_manage_patches_include_tasks_stop_dbconsole
+    - oracle_manage_patches_stop_dbconsole
+
+- include_tasks: common/stop_listeners.yml
+  with_items:
+    - '{{ oracle_manage_patches_unique_oracle_homes_list }}'
+    - '{{ oracle_gi_info }}'
+  loop_control:
+    label: "[Processsing ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}; version: {{ _oracle_manage_patches_oh_item.software_version }}"
+    loop_var: _oracle_manage_patches_oh_item
+  when: _oracle_manage_patches_oh_item.software_version == oracle_gi_info.software_version
+  tags:
+    - oracle_manage_patches_include_tasks_stop_listeners
+    - oracle_manage_patches_stop_listeners
+
+- name: shutdown databases
+  shell: |
+    {% if _oracle_manage_patches_db_item.database_type == 'SINGLE' %}
+    printf 'shutdown immediate\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    {% else %}
+    $ORACLE_HOME/bin/srvctl stop database -d $DB_UNIQUE_NAME
+    {% endif %}
+    echo
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+    DB_UNIQUE_NAME: '{{ _oracle_manage_patches_db_item.db_unique_name }}'
+  with_items:
+    - '{{ oracle_databases }}'
+  loop_control:
+    label: "[Shutting down DB_UNIQUE_NAME: {{ _oracle_manage_patches_db_item.db_unique_name }}; ORACLE_HOME: {{ _oracle_manage_patches_db_item.oracle_home }}]"
+    loop_var: _oracle_manage_patches_db_item
+  when:
+    - _oracle_manage_patches_db_item.software_version == oracle_gi_info.software_version
+  tags:
+    - oracle_manage_patches_shutdown_databases
+
+- include_tasks: common/opatchauto_apply_gi_quarterly_patch_binaries.yml
+  tags:
+    - oracle_manage_patches_include_tasks_opatchauto_apply_gi_quarterly_patch_binaries
+
+- include_tasks: common/opatchauto_apply_db_quarterly_patch_ojvm.yml
+  with_items:
+    - '{{ oracle_manage_patches_unique_oracle_homes_list }}'
+  loop_control:
+    label: "[Processsing ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}; version: {{ _oracle_manage_patches_oh_item.software_version }}"
+    loop_var: _oracle_manage_patches_oh_item
+  when: _oracle_manage_patches_oh_item.software_version == oracle_gi_info.software_version
+  tags:
+    - oracle_manage_patches_include_tasks_opatchauto_apply_db_quarterly_patch_ojvm
+
+- include_tasks: common/apply_oh_datapatch.yml
+  with_items:
+    - '{{ oracle_databases }}'
+  loop_control:
+    label: "[Processsing DB_NAME: {{ _oracle_manage_patches_db_item.db_name }}; ORACLE_HOME: {{ _oracle_manage_patches_db_item.oracle_home }}]"
+    loop_var: _oracle_manage_patches_db_item
+  when: 
+    - _oracle_manage_patches_db_item.software_version == oracle_gi_info.software_version
+    - _oracle_manage_patches_db_item.database_role == "PRIMARY"
+  tags:
+    - oracle_manage_patches_include_tasks_apply_oh_datapatch
+
+- name: startup databases
+  shell: |
+    {% if _oracle_manage_patches_db_item.database_type == 'SINGLE' %}
+    {%   if _oracle_manage_patches_db_item.database_role == 'PRIMARY' %}
+    {%     if _oracle_manage_patches_db_item.is_registered_in_gi|default(false,true)|bool %}
+    $ORACLE_HOME/bin/srvctl start database -d $DB_UNIQUE_NAME
+    {%     else %}
+    printf 'startup\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    {%     endif %}
+    {%   else %}
+    printf 'startup mount\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    {%   endif %}
+    {% else %}
+    $ORACLE_HOME/bin/srvctl start database -d $DB_UNIQUE_NAME
+    {% endif %}
+    echo
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+    DB_UNIQUE_NAME: '{{ _oracle_manage_patches_db_item.db_unique_name }}'
+  with_items:
+    - '{{ oracle_databases }}'
+  loop_control:
+    label: "[Starting up DB_UNIQUE_NAME: {{ _oracle_manage_patches_db_item.db_unique_name }}; ORACLE_HOME: {{ _oracle_manage_patches_db_item.oracle_home }}]"
+    loop_var: _oracle_manage_patches_db_item
+  when:
+    - _oracle_manage_patches_db_item.software_version == oracle_gi_info.software_version
+  tags:
+    - oracle_manage_patches_startup_databases
+
+- include_tasks: common/start_listeners.yml
+  with_items:
+    - '{{ oracle_manage_patches_unique_oracle_homes_list }}'
+    - '{{ oracle_gi_info }}'
+  loop_control:
+    label: "[Processsing ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}; version: {{ _oracle_manage_patches_oh_item.software_version }}"
+    loop_var: _oracle_manage_patches_oh_item
+  when: _oracle_manage_patches_oh_item.software_version == oracle_gi_info.software_version
+  tags:
+    - oracle_manage_patches_include_tasks_start_listeners
+    - oracle_manage_patches_start_listeners
+
+- include_tasks: common/start_dbconsole.yml
+  with_items:
+    - '{{ oracle_manage_patches_unique_oracle_homes_list }}'
+  loop_control:
+    label: "[Processsing ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}; version: {{ _oracle_manage_patches_oh_item.software_version }}"
+    loop_var: _oracle_manage_patches_oh_item
+  when: _oracle_manage_patches_oh_item.software_version == oracle_gi_info.software_version
+  tags:
+    - oracle_manage_patches_include_tasks_start_dbconsole
+    - oracle_manage_patches_start_dbconsole
+
+- include_tasks: apply_ojvmgicombo_oh_post.yml
+  with_items:
+    - '{{ oracle_gi_info }}'
+    - '{{ oracle_manage_patches_unique_oracle_homes_list }}'
+  loop_control:
+    label: "[Processsing ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}; version: {{ _oracle_manage_patches_oh_item.software_version }}"
+    loop_var: _oracle_manage_patches_oh_item
+  when: _oracle_manage_patches_oh_item.software_version == oracle_gi_info.software_version
+  tags:
+    - oracle_manage_patches_include_tasks_oh_post
+
+- include_tasks: common/cleanup.yml
+  tags:
+    - oracle_manage_patches_cleanup
+

@@ -1,0 +1,20 @@
+---
+
+- name: update opatch | extract opatch
+  unarchive:
+    src: "{{ oracle_manage_patches_opatch_dir_prefix }}{{ oracle_manage_patches_opatch[(_oracle_manage_patches_oh_item.software_version|splitext)[0]].filename }}"
+    dest: "{{ _oracle_manage_patches_oh_item.oracle_home }}"
+    remote_src: '{{ oracle_manage_patches_remote_stage }}'
+    owner: "{{ oracle_user }}"
+#    group: "{{ oracle_oinstall_group }}"
+  check_mode: no
+  delegate_to: '{{ _oracle_manage_patches_host_opatch_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_opatch_item
+    label: "[Extracting OPatch zip file ({{  oracle_manage_patches_opatch[(_oracle_manage_patches_oh_item.software_version|splitext)[0]].filename | basename }}) to ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}]"
+  when: oracle_manage_patches_update_opatch
+  tags:
+    - oracle_manage_patches_extract_opatch
+

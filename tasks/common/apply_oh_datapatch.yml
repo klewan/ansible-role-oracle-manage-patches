@@ -1,0 +1,100 @@
+---
+
+- name: apply datapatch | change cluster_database=false for RAC primary databases
+  shell: |
+    printf 'startup nomount\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    printf 'alter system set cluster_database=false scope=spfile;\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    printf 'shutdown immediate\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  when:
+    - oracle_manage_patches_rac_remote_nodes|length > 0
+#    - _oracle_manage_patches_db_item.database_type != 'SINGLE'
+#    - _oracle_manage_patches_db_item.cluster_database|bool
+  tags:
+    - oracle_manage_patches_datapatch_set_cluster_database_false
+
+- name: apply datapatch | startup database in UPGRADE mode
+  shell: |
+    printf 'startup upgrade\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    #echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  register: _oracle_manage_patches_db_startup_upgrade
+  ignore_errors: yes
+  tags:
+    - oracle_manage_patches_datapatch_startup_upgrade
+
+- include_tasks: display_stdout_lines_or_fail.yml
+  vars:
+    _oracle_manage_patches_debug: '{{ _oracle_manage_patches_db_startup_upgrade }}'
+  when: not ansible_check_mode
+
+- name: apply datapatch | display datapatch apply starting message
+  debug:
+    msg: [ "Running DATAPATCH for ORACLE_SID={{ _oracle_manage_patches_db_item.instance_name }}; ORACLE_HOME={{ _oracle_manage_patches_db_item.oracle_home }}", "Logfile: {{ oracle_manage_patches_log_dir }}/db.{{ _oracle_manage_patches_db_item.instance_name }}.p{{ oracle_manage_patches_gi_patch.patchid }}.datapatch.TIMESTAMP.log", "Please wait .." ]
+  when: not ansible_check_mode
+  tags:
+    - oracle_manage_patches_datapatch_apply_on_database_message
+    - oracle_manage_patches_datapatch_apply_on_database
+
+- name: apply datapatch | run datapatch utility
+  shell: |
+    cd $ORACLE_HOME/OPatch
+    ./datapatch -verbose | tee {{ oracle_manage_patches_log_dir }}/db.${ORACLE_SID}.p{{ oracle_manage_patches_gi_patch.patchid }}.datapatch.$(date +%Y-%m-%d_%H%M%S).log
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  ignore_errors: yes
+  register: _oracle_manage_patches_datapatch_apply_on_database
+  tags:
+    - oracle_manage_patches_datapatch_apply_on_database
+
+- include_tasks: display_stdout_lines_or_fail.yml
+  vars:
+    _oracle_manage_patches_debug: '{{ _oracle_manage_patches_datapatch_apply_on_database }}'
+  when:
+    - not ansible_check_mode
+    - (oracle_manage_patches_display_datapatch_output or _oracle_manage_patches_datapatch_apply_on_database.rc|default(0,true) != 0 or _oracle_manage_patches_datapatch_apply_on_database.stderr|default('',true) != '')
+  tags:
+    - oracle_manage_patches_datapatch_apply_on_database_output
+
+- name: apply datapatch | change cluster_database=true for RAC primary databases
+  shell: |
+    printf 'alter system set cluster_database=true scope=spfile;\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  when:
+    - oracle_manage_patches_rac_remote_nodes|length > 0
+#    - _oracle_manage_patches_db_item.database_type != 'SINGLE'
+#    - _oracle_manage_patches_db_item.cluster_database|bool
+  tags:
+    - oracle_manage_patches_datapatch_set_cluster_database_true
+    
+- name: apply datapatch | run utlrp.sql script to recompile INVALID objects
+  shell: |
+    cd $ORACLE_HOME/rdbms/admin
+    echo exit | $ORACLE_HOME/bin/sqlplus -S / as sysdba @utlrp.sql | tee {{ oracle_manage_patches_log_dir }}/db.${ORACLE_SID}.p{{ oracle_manage_patches_gi_patch.patchid }}.utlrp-sql.$(date +%Y-%m-%d_%H%M%S).log
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  tags:
+    - oracle_manage_patches_datapatch_utlrp
+
+- name: apply datapatch | shutdown database
+  shell: |
+    printf 'shutdown immediate\n' | $ORACLE_HOME/bin/sqlplus / as sysdba
+    echo 0
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_db_item.oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_db_item.instance_name }}'
+  tags:
+    - oracle_manage_patches_datapatch_shutdown_database
+
+

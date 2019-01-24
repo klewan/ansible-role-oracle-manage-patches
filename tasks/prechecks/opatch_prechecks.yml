@@ -1,0 +1,19 @@
+---
+
+- name: opatch prechecks | verify opatch utility list
+  assert:
+    that:
+      - "oracle_manage_patches_opatch[(_oracle_manage_patches_oh_item.software_version|splitext)[0]] is defined"
+    fail_msg: "Variable 'oracle_manage_patches_opatch' has no attribute [{{(_oracle_manage_patches_oh_item.software_version|splitext)[0]}}]"
+  tags:
+    - oracle_manage_patches_opatch_prechecks_variables
+
+- include_tasks: opatch_prechecks_delegate.yml
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_opatch_item
+    label: "[Checking OPatch zip file for host: {{ _oracle_manage_patches_host_opatch_item }}]"
+  tags:
+    - oracle_manage_patches_include_tasks_opatch_prechecks_delegate
+

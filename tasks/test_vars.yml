@@ -1,0 +1,23 @@
+---
+
+#- name: test - add RAC nodes
+#  set_fact:
+#    oracle_gi_info: "{{ oracle_gi_info | combine( { 'rac_remote_nodes': [ 'dbserver2.foo.com' ] } ) }}"
+
+#- name: test - add RAC nodes - display oracle_gi_info
+#  debug: var=oracle_gi_info
+
+
+#- name: test - add oracle_gatherinfo_dbconsole_running_services
+#  set_fact:
+#    oracle_gatherinfo_dbconsole_running_services: "{{ [] + [ {} | combine( { 'oracle_home': '/u01/app/oracle/product/12.1.0.2/dbhome121_se2' } ) | combine( { 'instance_name': 'TEST2' } ) ] }}"
+
+#- debug: var=oracle_gatherinfo_dbconsole_running_services
+
+#- name: test - add oracle_gatherinfo_dbconsole_registered_services
+#  set_fact:
+#    oracle_gatherinfo_dbconsole_registered_services: "{{ [] + [ {} | combine( { 'oracle_home': '/u01/app/oracle/product/12.1.0.2/dbhome121_se2' , 'oracle_sid': 'TEST2', 'state': 'ONLINE', 'dbconsole_resource_name': 'dbconsole.test2' } ) ] }}"
+
+#- debug: var=oracle_gatherinfo_dbconsole_registered_services
+
+

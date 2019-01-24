@@ -1,0 +1,28 @@
+---
+
+- name: stop listeners
+  shell: |
+    {% if oracle_manage_patches_registered_listeners_dict[_oracle_manage_patches_listener_item[1].listener_name+'_'+_oracle_manage_patches_listener_item[1].oracle_home] is not defined %}
+    $ORACLE_HOME/bin/lsnrctl stop {{ _oracle_manage_patches_listener_item[1].listener_name }}
+    {% else %}
+    $ORACLE_HOME/bin/srvctl stop listener -listener {{ _oracle_manage_patches_listener_item[1].listener_name }}
+    {% endif %}
+    echo
+  ignore_errors: yes
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_listener_item[1].oracle_home }}'
+    TNS_ADMIN: '{{ _oracle_manage_patches_listener_item[1].tns_admin }}'
+  delegate_to: '{{ _oracle_manage_patches_listener_item[0] }}'
+  with_nested:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+    - '{{ oracle_gatherinfo_listener_running_listeners }}'
+  loop_control:
+    label: "[Listener: {{ _oracle_manage_patches_listener_item[1].listener_name }}; ORACLE_HOME: {{ _oracle_manage_patches_listener_item[1].oracle_home }}]"
+    loop_var: _oracle_manage_patches_listener_item
+  when: 
+    - not ansible_check_mode
+    - _oracle_manage_patches_listener_item[1].oracle_home == _oracle_manage_patches_oh_item.oracle_home
+    - _oracle_manage_patches_listener_item[1].oracle_home != oracle_gi_info.oracle_home or oracle_manage_patches_registered_listeners_dict[_oracle_manage_patches_listener_item[1].listener_name+'_'+_oracle_manage_patches_listener_item[1].oracle_home] is not defined
+  tags:
+    - oracle_manage_patches_stop_listeners
+

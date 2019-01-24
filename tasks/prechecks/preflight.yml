@@ -1,0 +1,99 @@
+---
+
+- name: preflight | verify patch task
+  assert:
+    that:
+      - "oracle_manage_patches_task|default('',true)|lower in ['apply', 'rollback']"
+    fail_msg: "Patch task 'oracle_manage_patches_task' value is not valid (accepted values: apply, rollback)"
+  tags:
+    - oracle_manage_patches_variables
+
+- name: preflight | verify patch type
+  assert:
+    that:
+      - "oracle_manage_patches_patch_type|default('',true)|lower in oracle_manage_patches_quarterly_patches.keys()|default([]) or oracle_manage_patches_patch_type|default('',true)|lower == 'oneoff'"
+    fail_msg: "Patch type 'oracle_manage_patches_patch_type' value is not valid (accepted values: oneoff,{{ oracle_manage_patches_quarterly_patches.keys()|default([])|join(',') }})"
+  tags:
+    - oracle_manage_patches_variables
+
+- name: preflight | verify patch name
+  assert:
+    that:
+      - "oracle_manage_patches_patch_name is defined"
+    fail_msg: "Patch name is not defined ('oracle_manage_patches_patch_name')"
+  when: oracle_manage_patches_patch_type|default('',true)|lower in oracle_manage_patches_quarterly_patches.keys()|default([])
+  tags:
+    - oracle_manage_patches_variables
+
+- name: preflight | patches info
+  debug:
+    msg: "{{ oracle_manage_patches_task|capitalize }} {% if oracle_manage_patches_patch_type|lower == 'oneoff' %}one-off patches{% else %}{{ oracle_manage_patches_quarterly_patches[oracle_manage_patches_patch_type]['description'] }} ({{ oracle_manage_patches_patch_name }}) patch{% endif %}"
+  when: oracle_manage_patches_debug_display_patches_info
+  tags:
+    - oracle_manage_patches_variables
+    - oracle_manage_patches_display_patches_info
+
+- name: preflight | set variables (1)
+  set_fact:
+    oracle_manage_patches_oracle_gi_info_selected: '{{ oracle_gi_info }}'
+  when: 
+    - oracle_manage_patches_oracle_home_version_patterns|default([],true)|length == 0 or ( (oracle_manage_patches_oracle_home_version_patterns|default([],true)|length > 0 and oracle_gi_info.software_version | regex_search(oracle_manage_patches_oracle_home_version_patterns_string) ) )
+    - oracle_manage_patches_oracle_home_name_patterns|length == 0 or ( (oracle_manage_patches_oracle_home_name_patterns|length > 0 and oracle_gi_info.oracle_home | regex_search(oracle_manage_patches_oracle_home_name_patterns_string) ) )
+  tags:
+    - oracle_manage_patches_select_homes
+
+- name: preflight | GI filtered out by GRID_HOME name and/or version patterns
+  debug: var=oracle_manage_patches_oracle_gi_info_selected
+  when: oracle_manage_patches_debug_display_homes_selected_for_patching
+  tags:
+    - oracle_manage_patches_debug_display_homes_selected_for_patching
+
+- name: preflight | set variables (2)
+  set_fact:
+    oracle_manage_patches_oracle_databases_selected: '{{ oracle_manage_patches_oracle_databases_selected + [ item ] }}'
+  with_items:
+    - '{{ oracle_databases }}'
+  loop_control:
+    label: "[Processsing database: db_unique_name: {{ item.db_unique_name }}; ORACLE_HOME: {{ item.oracle_home }}"
+  when:
+    - oracle_manage_patches_oracle_home_version_patterns|default([],true)|length == 0 or ( (oracle_manage_patches_oracle_home_version_patterns|default([],true)|length > 0 and item.software_version | regex_search(oracle_manage_patches_oracle_home_version_patterns_string) ) )
+    - oracle_manage_patches_oracle_home_name_patterns|length == 0 or ( (oracle_manage_patches_oracle_home_name_patterns|length > 0 and item.oracle_home | regex_search(oracle_manage_patches_oracle_home_name_patterns_string) ) )
+  tags:
+    - oracle_manage_patches_select_homes
+
+- name: preflight | set variables (3)
+  set_fact:
+    oracle_manage_patches_unique_oracle_homes_dict: "{{ oracle_manage_patches_unique_oracle_homes_dict|default({}) | combine( { item.oracle_home: item.software_version } ) }}"
+  with_items:
+    - '{{ oracle_manage_patches_oracle_databases_selected }}'
+  loop_control:
+    label: "[Processsing database: db_unique_name: {{ item.db_unique_name }}; ORACLE_HOME: {{ item.oracle_home }}"
+  tags:
+    - oracle_manage_patches_select_homes
+
+- name: preflight | set variables (4)
+  set_fact:
+    oracle_manage_patches_unique_oracle_homes_list: "{{ oracle_manage_patches_unique_oracle_homes_list|default([]) + [ {} | combine( { 'oracle_home': item.key } ) | combine( { 'software_version': item.value } ) ] }}"
+  with_dict:
+    - '{{ oracle_manage_patches_unique_oracle_homes_dict }}'
+  loop_control:
+    label: "[Processsing ORACLE_HOME: {{ item.key }}; version: {{ item.value }}]"
+  tags:
+    - oracle_manage_patches_select_homes
+
+- name: preflight | A list of databases filtered out by ORACLE_HOME name and/or version patterns
+  debug: var=oracle_manage_patches_oracle_databases_selected
+  when: oracle_manage_patches_debug_display_homes_selected_for_patching
+  tags:
+    - oracle_manage_patches_debug_display_homes_selected_for_patching
+
+- name: preflight | set variables (5)
+  set_fact:
+    oracle_manage_patches_registered_listeners_dict: "{{ oracle_manage_patches_registered_listeners_dict|default({}) | combine( { item.listener_name+'_'+item.oracle_home: item.state } ) }}"
+  with_items:
+    - '{{ oracle_gatherinfo_listener_registered_listeners }}'
+  loop_control:
+    label: "[Processsing listener: {{ item.listener_name }};  ORACLE_HOME: {{ item.oracle_home }}]"
+  tags:
+    - oracle_manage_patches_registered_listeners_dict
+

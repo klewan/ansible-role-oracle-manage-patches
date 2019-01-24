@@ -1,0 +1,92 @@
+---
+
+- include_tasks: prechecks/opatch_prechecks.yml
+  tags:
+    - oracle_manage_patches_include_tasks_opatch_prechecks
+
+- include_tasks: prechecks/quarterly_patches_prechecks.yml
+  tags:
+    - oracle_manage_patches_include_tasks_quarterly_patches_prechecks
+
+- include_tasks: common/backup_oracle_home.yml
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_item
+    label: "[host: {{ _oracle_manage_patches_host_item }}; ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}]"
+  when: oracle_manage_patches_backup_oracle_home
+  tags:
+    - oracle_manage_patches_backup_oracle_home
+
+- include_tasks: common/update_opatch.yml
+  tags:
+    - oracle_manage_patches_include_tasks_update_opatch
+
+- include_tasks: common/extract_patch_files.yml
+  tags:
+    - oracle_manage_patches_include_tasks_extract_patch_files
+
+- include_tasks: common/run_pre_scripts.yml
+  when: oracle_manage_patches_run_pre_scripts
+  tags:
+    - oracle_manage_patches_include_tasks_run_pre_scripts
+
+- include_tasks: common/stop_dbconsole.yml
+  tags:
+    - oracle_manage_patches_include_tasks_stop_dbconsole
+    - oracle_manage_patches_stop_dbconsole
+
+- include_tasks: common/stop_listeners.yml
+  tags:
+    - oracle_manage_patches_include_tasks_stop_listeners
+    - oracle_manage_patches_stop_listeners
+
+- include_tasks: common/shutdown_databases.yml
+  tags:
+    - oracle_manage_patches_include_tasks_shutdown_databases
+    - oracle_manage_patches_shutdown_databases
+
+- include_tasks: common/opatch_apply_db_quarterly_patch_binaries.yml
+  tags:
+    - oracle_manage_patches_include_tasks_opatch_apply_db_quarterly_patch_binaries
+
+- include_tasks: common/opatch_apply_db_quarterly_patch_ojvm.yml
+  tags:
+    - oracle_manage_patches_include_tasks_opatch_apply_db_quarterly_patch_ojvm
+
+- include_tasks: common/opatch_apply_ojvmdbcombo_postinstall.yml
+  with_items:
+    - '{{ oracle_manage_patches_oracle_databases_selected }}'
+  loop_control:
+    label: "[Processsing DB_NAME: {{ _oracle_manage_patches_db_item.db_name }}; ORACLE_HOME: {{ _oracle_manage_patches_db_item.oracle_home }}]"
+    loop_var: _oracle_manage_patches_db_item
+  when:
+    - _oracle_manage_patches_db_item.oracle_home == _oracle_manage_patches_oh_item.oracle_home
+    - _oracle_manage_patches_db_item.database_role == "PRIMARY"
+  tags:
+    - oracle_manage_patches_include_tasks_opatch_apply_ojvmdbcombo_postinstall
+
+- include_tasks: common/startup_databases.yml
+  tags:
+    - oracle_manage_patches_include_tasks_startup_databases
+    - oracle_manage_patches_startup_databases
+
+- include_tasks: common/start_listeners.yml
+  tags:
+    - oracle_manage_patches_include_tasks_start_listeners
+    - oracle_manage_patches_start_listeners
+
+- include_tasks: common/start_dbconsole.yml
+  tags:
+    - oracle_manage_patches_include_tasks_start_dbconsole
+    - oracle_manage_patches_start_dbconsole
+
+- include_tasks: common/run_post_scripts.yml
+  when: oracle_manage_patches_run_post_scripts
+  tags:
+    - oracle_manage_patches_include_tasks_run_post_scripts
+
+- include_tasks: common/cleanup.yml
+  tags:
+    - oracle_manage_patches_cleanup
+

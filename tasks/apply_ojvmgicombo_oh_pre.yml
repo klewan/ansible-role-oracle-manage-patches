@@ -1,0 +1,39 @@
+---
+
+- include_tasks: prechecks/opatch_prechecks.yml
+  tags:
+    - oracle_manage_patches_include_tasks_opatch_prechecks
+
+- include_tasks: prechecks/quarterly_patches_prechecks.yml
+  tags:
+    - oracle_manage_patches_include_tasks_quarterly_patches_prechecks
+
+- include_tasks: common/backup_oracle_home.yml
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_item
+    label: "[host: {{ _oracle_manage_patches_host_item }}; ORACLE_HOME: {{ _oracle_manage_patches_oh_item.oracle_home }}]"
+  when: oracle_manage_patches_backup_oracle_home
+  tags:
+    - oracle_manage_patches_backup_oracle_home
+
+- include_tasks: common/update_opatch.yml
+  tags:
+    - oracle_manage_patches_include_tasks_update_opatch
+
+- include_tasks: common/extract_patch_files.yml
+  when: _oracle_manage_patches_oh_item.oracle_home == oracle_gi_info.oracle_home
+  tags:
+    - oracle_manage_patches_include_tasks_extract_patch_files
+
+- include_tasks: common/run_pre_scripts.yml
+  when: oracle_manage_patches_run_pre_scripts and _oracle_manage_patches_oh_item.oracle_home != oracle_gi_info.oracle_home
+  tags:
+    - oracle_manage_patches_include_tasks_run_pre_scripts
+
+- include_tasks: common/run_pre_scripts_gi.yml
+  when: oracle_manage_patches_run_pre_scripts and _oracle_manage_patches_oh_item.oracle_home == oracle_gi_info.oracle_home
+  tags:
+    - oracle_manage_patches_include_tasks_run_pre_scripts
+

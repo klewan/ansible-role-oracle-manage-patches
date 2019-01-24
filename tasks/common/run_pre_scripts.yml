@@ -1,0 +1,84 @@
+---
+
+- name: pre scripts | create patch log directory
+  file:
+    path: "{{ oracle_manage_patches_log_dir }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    mode: 0777
+  check_mode: no
+  delegate_to: '{{ _oracle_manage_patches_host_patch_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_patch_item
+    label: "[All log files are located under {{ oracle_manage_patches_log_dir }} directory]"
+  tags:
+    - oracle_manage_patches_patch_directory
+
+- name: pre scripts | copy pre scripts
+  copy:
+    src: db_psu_apply_checks.sql
+    dest: "{{ oracle_manage_patches_log_dir }}"
+    owner: "{{ oracle_user }}"
+    mode: 0640
+  delegate_to: '{{ _oracle_manage_patches_host_patch_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_patch_item
+    label: "[Copy scripts to: {{ oracle_manage_patches_log_dir }}]"
+  tags:
+    - oracle_manage_patches_copy_pre_scripts
+
+- name: pre scripts | execute pre scripts
+  shell: |
+    echo exit | $ORACLE_HOME/bin/sqlplus -S / as sysdba @{{ oracle_manage_patches_log_dir }}/db_psu_apply_checks.sql | tee {{ oracle_manage_patches_log_dir }}/db.${ORACLE_SID}.pre.db_psu_apply_checks.sql.$(date +%Y-%m-%d_%H%M%S).log
+  ignore_errors: yes
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_host_db_item[1].oracle_home }}'
+    ORACLE_SID: '{{ _oracle_manage_patches_host_db_item[1].instance_name }}'
+  delegate_to: '{{ _oracle_manage_patches_host_db_item[0] }}'
+  with_nested:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+    - '{{ oracle_manage_patches_oracle_databases_selected }}'
+  loop_control:
+    loop_var: _oracle_manage_patches_host_db_item
+    label: "[ORACLE_HOME: {{ _oracle_manage_patches_host_db_item[1].oracle_home }}; ORACLE_SID: {{ _oracle_manage_patches_host_db_item[1].instance_name }}; log: {{ oracle_manage_patches_log_dir }}/db.{{ _oracle_manage_patches_host_db_item[1].instance_name }}.pre.db_psu_apply_checks.sql.TIMESTAMP.log]"
+  when: 
+    - not ansible_check_mode 
+    - _oracle_manage_patches_host_db_item[1].oracle_home == _oracle_manage_patches_oh_item.oracle_home 
+    - _oracle_manage_patches_host_db_item[1].database_role == 'PRIMARY'
+    - oracle_manage_patches_task == 'apply'
+  tags:
+    - oracle_manage_patches_run_pre_scripts
+
+- name: pre scripts | save 'opatch lsinventory' output
+  shell: |
+    $ORACLE_HOME/OPatch/opatch lsinventory | tee {{ oracle_manage_patches_log_dir }}/oracle_homes.pre.{{ oracle_manage_patches_task }}.opatch-lsinventory.$(date +%Y-%m-%d_%H%M%S).log
+  environment:
+    ORACLE_HOME: '{{ _oracle_manage_patches_oh_item.oracle_home }}'
+  check_mode: no
+  ignore_errors: yes
+  register: _oracle_manage_patches_opatchlsinventory_output
+  delegate_to: '{{ _oracle_manage_patches_host_patch_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_patch_item
+    label: "[opatch lsinventory for :{{ _oracle_manage_patches_oh_item.oracle_home }}; log: {{ oracle_manage_patches_log_dir }}/oracle_homes.pre.{{ oracle_manage_patches_task }}.opatch-lsinventory.TIMESTAMP.log]"
+  tags:
+    - oracle_manage_patches_pre_opatch_lsinventory
+
+- include_tasks: display_stdout_lines_or_fail.yml
+  vars:
+    _oracle_manage_patches_debug: '{{ _oracle_manage_patches_lsinventory_item }}'
+  with_items:
+    - "{{ _oracle_manage_patches_opatchlsinventory_output.results|default([],true) }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_lsinventory_item
+    label: "[host: {{ _oracle_manage_patches_lsinventory_item._oracle_manage_patches_host_patch_item }}]"
+  when: oracle_manage_patches_display_opatch_lsinventory_output or _oracle_manage_patches_lsinventory_item.stderr|default('',true) != '' or _oracle_manage_patches_lsinventory_item.rc|default(0,true) != 0
+  tags:
+    - oracle_manage_patches_pre_display_opatch_lsinventory
+

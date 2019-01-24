@@ -1,0 +1,8 @@
+---
+
+- name: unknown patch type
+  debug:
+    msg: "Cannot find a task file for '{{ oracle_manage_patches_task }}' task and '{{ oracle_manage_patches_patch_type }}' patch type."
+  tags:
+    - oracle_manage_patches_debug_unknown_patch_type
+

@@ -1,0 +1,7 @@
+---
+
+- import_tasks: opatch_prechecks_host.yml
+  delegate_to: '{% if oracle_manage_patches_remote_stage %}{{ _oracle_manage_patches_host_opatch_item }}{% else %}localhost{% endif %}'
+  tags:
+    - oracle_manage_patches_import_tasks_opatch_prechecks_host
+

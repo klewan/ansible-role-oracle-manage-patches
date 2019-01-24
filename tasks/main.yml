@@ -1,0 +1,21 @@
+---
+
+- import_tasks: prechecks/preflight.yml
+  tags:
+    - oracle_manage_patches_preflight
+
+#- include_tasks: '{{ _oracle_manage_patches_task_file_item }}'
+#  with_first_found:
+#    - '{{ oracle_manage_patches_task }}_{{ oracle_manage_patches_patch_type }}.yml'
+#    - unknown_patch_type.yml
+#  loop_control:
+#    label: "[Processsing file: {{ _oracle_manage_patches_task_file_item }}"
+#    loop_var: _oracle_manage_patches_task_file_item
+#  tags:
+#    - oracle_manage_patches_include_patch_type_tasks
+
+- include_tasks: '{{ oracle_manage_patches_task }}_{{ oracle_manage_patches_patch_type }}.yml'
+  when: oracle_manage_patches_oracle_databases_selected|length > 0
+  tags:
+    - oracle_manage_patches_include_patch_type_tasks
+

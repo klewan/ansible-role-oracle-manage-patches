@@ -1,0 +1,15 @@
+---
+
+- name: cleanup | remove patch directory
+  file:
+    path: "{{ oracle_manage_patches_stage_install_dir }}"
+    state: absent
+  delegate_to: '{{ _oracle_manage_patches_host_opatch_item }}'
+  with_items:
+    - "{{ oracle_manage_patches_rac_remote_nodes + [ inventory_hostname ] }}"
+  loop_control:
+    loop_var: _oracle_manage_patches_host_opatch_item
+    label: "[directory: {{ oracle_manage_patches_stage_install_dir }}]"
+  tags:
+    - oracle_manage_patches_patch_directory_cleanup
+
